@@ -1,9 +1,13 @@
 import pygame
 import numpy as np
+import math
 
 JUMP_SPEED = 400
 G = 1000
 JUMP_TIME = 2 * JUMP_SPEED / G
+
+SCREEN_WIDTH = 600
+SCREEN_HEIGHT = 400
 
 rng = np.random.default_rng()
 
@@ -13,8 +17,9 @@ class Player:
         self.image = pygame.image.load('assets/dino.png')
         self.image = pygame.transform.scale_by(self.image, 0.2)
         self.rect = self.image.get_rect()
-        self.rect.left = 0
-        self.rect.bottom = -10
+        self.rect.left = 20
+        self.rect.bottom = SCREEN_HEIGHT - 10
+        self.originRect = self.rect
         self.y = 0
         self.vy = 0
         self.jumpTime = 0
@@ -24,7 +29,7 @@ class Player:
         self.dead = False
 
     def draw(self, screen):
-        screen.blit(pygame.transform.rotate(self.image, self.rotation), self.rect.move(20, screen.get_height() - self.y))
+        screen.blit(pygame.transform.rotate(self.image, self.rotation), self.rect)
 
     def jump(self):
         if self.y == 0:
@@ -41,18 +46,23 @@ class Player:
             self.vy = 0
             self.y = 0
 
-            self.rotation += self.vr * self.vrDir
-            if (self.rotation > 180):
-                self.rotation -= 180
-            if (self.rotation < -180):
-                self.rotation += 180
+            if self.rotation < 10 and self.rotation > -10:
+                self.rotation += self.vr * self.vrDir
+
             if (self.rotation > 5 or self.rotation < -5):
                 self.vrDir = -1
             if (self.rotation < -5):
                 self.vrDir = 1
 
+        if (self.rotation > 180):
+            self.rotation -= 180
+        if (self.rotation < -180):
+            self.rotation += 180
+
+        self.rect = self.originRect.move(0, -self.y)
+
         for cactus in cacti:
-            if self.rect.colliderect(cactus.rect):
+            if pygame.Rect.colliderect(self.rect, cactus.rect):
                 self.dead = True
 
 class Cactus:
@@ -62,14 +72,16 @@ class Cactus:
         self.image = pygame.transform.scale_by(self.image, 1.0)
         self.rect = self.image.get_rect()
         self.rect.left = 0
-        self.rect.bottom = -10
+        self.rect.bottom = SCREEN_HEIGHT - 10
+        self.originRect = self.rect
         self.x = startX
 
     def draw(self, screen):
-        screen.blit(self.image, self.rect.move(self.x, screen.get_height()))
+        screen.blit(self.image, self.rect)
 
     def update(self, dt, speed):
         self.x -= speed * dt
+        self.rect = self.originRect.move(self.x, 0)
 
 class Game:
 
@@ -80,7 +92,7 @@ class Game:
             self.font = pygame.font.SysFont('Comic Sans MS', 30)
 
             self.running = True
-            self.screen = pygame.display.set_mode((600, 400))
+            self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
             self.reset()
 
@@ -101,7 +113,7 @@ class Game:
                     self.running = False
 
             keys = pygame.key.get_pressed()
-            if keys[pygame.K_SPACE]:
+            if keys[pygame.K_SPACE] or keys[pygame.K_UP]:
                 if not self.player.dead:
                     self.player.jump()
                 else:
@@ -110,6 +122,9 @@ class Game:
             if not self.player.dead:
                 self.screen.fill("white")
                 dt = self.clock.tick(60) / 1000
+
+                self.speed = 300 + (self.score / 10) * 100
+                self.player.vr = math.floor(self.score / 10) + 1
 
                 closestCacti = 0
                 for cactus in self.cacti:
@@ -121,11 +136,11 @@ class Game:
                     if (cactus.x > closestCacti):
                         closestCacti = cactus.x
 
-                closestCacti = self.screen.get_width() - closestCacti + 100
-                if (closestCacti > 300 and rng.random() < 5.0 / self.speed):
-                    self.cacti.append(Cactus(self.screen.get_width() + 100))
-
                 self.player.update(dt, self.cacti)
+
+                closestCacti = SCREEN_WIDTH - closestCacti + 100
+                if (closestCacti > 500 and rng.random() < 5.0 / self.speed):
+                    self.cacti.append(Cactus(SCREEN_WIDTH + 100))
 
                 pygame.draw.rect(self.screen, "grey", self.ground)
                 self.player.draw(self.screen)
