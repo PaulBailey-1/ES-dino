@@ -3,13 +3,16 @@ from src.agent import Agent
 
 if (__name__ == "__main__"):
 
-    game = Game()
+    game = Game(display=True)
 
     # Create agents
-    agent = Agent()
+    agents = [Agent() for _ in range(2)]
+    # agent.setParams([-0.008, 0, 1])
     # Rollout
-    game.addAgent(agent)
+    game.addAgents(agents)
+    print('Running batch 1')
     while game.running:
         game.run()
+
     # Optimize them
-    
+    print(game.getScores())

@@ -27,11 +27,13 @@ class Player:
         self.vr = 1
         self.vrDir = 1
         self.dead = False
+        self.score = 0
 
         self.agent = agent
 
-    def update(self, dt, cacti, speed):
+    def update(self, dt, cacti, speed, score):
 
+        self.score = score
         if self.agent != None:
             closest = SCREEN_WIDTH
             for cactus in cacti:
@@ -45,7 +47,7 @@ class Player:
         if self.y > 0:
             self.vy -= G * dt
             self.jumpTime += dt
-            self.rotation = -360 * self.jumpTime / JUMP_TIME
+            # self.rotation = -360 * self.jumpTime / JUMP_TIME
         else:
             self.vy = 0
             self.y = 0
@@ -68,6 +70,7 @@ class Player:
         for cactus in cacti:
             if pygame.Rect.colliderect(self.rect, cactus.rect):
                 self.dead = True
+                print('Player died')
 
     def draw(self, screen):
         screen.blit(pygame.transform.rotate(self.image, self.rotation), self.rect)
@@ -102,11 +105,11 @@ class Game:
             pygame.init()
             pygame.font.init()
             self.font = pygame.font.SysFont('Comic Sans MS', 30)
-
-            self.running = True
             self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
-            self.reset()
+        self.running = True
+        self.display = display
+        self.reset()
 
     def reset(self):
         self.clock = pygame.time.Clock()
@@ -114,7 +117,7 @@ class Game:
         self.speed = 300
         self.score = 0
 
-        self.ground = pygame.Rect(0, self.screen.get_height() - 10, self.screen.get_width(), 10)
+        self.ground = pygame.Rect(0, SCREEN_HEIGHT - 10, SCREEN_WIDTH, 10)
 
         self.players = []
         # self.player = Player()
@@ -123,15 +126,19 @@ class Game:
 
         self.cacti = []
 
-    def addAgent(self, agent):
-        self.players.append(Player(agent))
+    def addAgents(self, agents):
+        self.players = [Player(agent) for agent in agents]
+
+    def getScores(self):
+        return [player.score for player in self.players]
 
     def run(self):
         # while self.running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.running = False
-                pygame.quit()
+        if self.display:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
+                    pygame.quit()
 
         self.running = False
         for player in self.players:
@@ -147,8 +154,11 @@ class Game:
                     self.reset()
 
         if self.player == None or not self.player.dead:
-            self.screen.fill("white")
-            dt = self.clock.tick(60) / 1000
+            if self.display:
+                self.screen.fill("white")
+                dt = self.clock.tick(60) / 1000
+            else:
+                dt = 1 / 60
 
             self.speed = 300 + (self.score / 10) * 100
             for player in self.players:
@@ -157,27 +167,32 @@ class Game:
             closestCacti = 0
             for cactus in self.cacti:
                 cactus.update(dt, self.speed)
-                cactus.draw(self.screen)
+                if self.display:
+                    cactus.draw(self.screen)
                 if (cactus.x < -20):
                     self.cacti.remove(cactus)
                     self.score += 1
+                    print("Score: ", self.score)
                 if (cactus.x > closestCacti):
                     closestCacti = cactus.x
 
             for player in self.players:
-                player.update(dt, self.cacti, self.speed)
+                if not player.dead:
+                    player.update(dt, self.cacti, self.speed, self.score)
 
-            closestCacti = SCREEN_WIDTH - closestCacti + 100
-            if (closestCacti > 500 and rng.random() > 5.0 / self.speed):
-                self.cacti.append(Cactus(SCREEN_WIDTH + 100))
+            closestCacti = SCREEN_WIDTH - closestCacti
+            if (closestCacti >= 600 and rng.random() < 5.0 / self.speed):
+                self.cacti.append(Cactus(SCREEN_WIDTH))
 
-            pygame.draw.rect(self.screen, "grey", self.ground)
-            for player in self.players:
-                player.draw(self.screen)
+            if self.display:
+                pygame.draw.rect(self.screen, "grey", self.ground)
+                for player in self.players:
+                    if not player.dead:
+                        player.draw(self.screen)
 
-            scoreText = self.font.render(str(self.score), False, (0, 0, 0))
-            self.screen.blit(scoreText, (20, 20))
+                scoreText = self.font.render(str(self.score), False, (0, 0, 0))
+                self.screen.blit(scoreText, (20, 20))
 
-            pygame.display.flip()
+                pygame.display.flip()
 
         # pygame.quit()
