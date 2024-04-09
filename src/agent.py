@@ -22,8 +22,11 @@ class Agent:
             return [0]
         # return [state[0] < state[1] / 2]
 
-    def setParams(self, params):
+    def getParams(self):
+        self.params = np.concatenate([weights.flatten() for weights in self.model.get_weights()])
+        return self.params
 
+    def setParams(self, params):
         # Split the flat array into weights and biases
         weights_biases = np.split(params, self.split_points)
 
