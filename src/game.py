@@ -13,13 +13,18 @@ rng = np.random.default_rng()
 
 class Player:
 
-    def __init__(self, agent=None):
+    def __init__(self, agent=None, offset=20):
         self.image = pygame.image.load('assets/dino.png')
         self.image = pygame.transform.scale_by(self.image, 0.2)
         self.rect = self.image.get_rect()
-        self.rect.left = 20
+        self.rect.left = offset
         self.rect.bottom = SCREEN_HEIGHT - 10
         self.originRect = self.rect
+    
+        self.agent = agent
+        self.reset()
+    
+    def reset(self):
         self.y = 0
         self.vy = 0
         self.jumpTime = 0
@@ -28,8 +33,6 @@ class Player:
         self.vrDir = 1
         self.dead = False
         self.score = 0
-
-        self.agent = agent
 
     def update(self, dt, cacti, speed, score):
 
@@ -107,32 +110,36 @@ class Game:
             self.font = pygame.font.SysFont('Comic Sans MS', 30)
             self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
-        self.running = True
+        self.players = []
+        # self.player = Player()
+        # self.players.append(self.player)
+        self.player = None
+        self.ground = pygame.Rect(0, SCREEN_HEIGHT - 10, SCREEN_WIDTH, 10)
+
         self.display = display
         self.reset()
 
     def reset(self):
         self.clock = pygame.time.Clock()
         
+        self.running = True
         self.speed = 300
         self.score = 0
 
-        self.ground = pygame.Rect(0, SCREEN_HEIGHT - 10, SCREEN_WIDTH, 10)
-
-        self.players = []
-        # self.player = Player()
-        # self.players.append(self.player)
-        self.player = None
-
         self.cacti = []
+        for player in self.players:
+            player.reset()
 
     def addAgents(self, agents):
-        self.players = [Player(agent) for agent in agents]
+        offset = 20
+        for agent in agents:
+            self.players.append(Player(agent, offset))
+            offset += 20
 
     def getScores(self):
         return [player.score for player in self.players]
 
-    def run(self):
+    def run(self, generation):
         # while self.running:
         if self.display:
             for event in pygame.event.get():
@@ -181,7 +188,7 @@ class Game:
                     player.update(dt, self.cacti, self.speed, self.score)
 
             closestCacti = SCREEN_WIDTH - closestCacti
-            if (closestCacti >= 600 and rng.random() < 5.0 / self.speed):
+            if (closestCacti >= 600 and rng.random() < 3.0 / self.speed):
                 self.cacti.append(Cactus(SCREEN_WIDTH))
 
             if self.display:
@@ -190,8 +197,10 @@ class Game:
                     if not player.dead:
                         player.draw(self.screen)
 
-                scoreText = self.font.render(str(self.score), False, (0, 0, 0))
-                self.screen.blit(scoreText, (20, 20))
+                scoreText = self.font.render("Score: " + str(self.score), False, (0, 0, 0))
+                self.screen.blit(scoreText, (10, 10))
+                scoreText = self.font.render("Generation: " + str(generation), False, (0, 0, 0))
+                self.screen.blit(scoreText, (10, 45))
 
                 pygame.display.flip()
 
